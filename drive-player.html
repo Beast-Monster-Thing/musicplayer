@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Drive Player</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Canela+Deck:wght@300&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0f;
+    --surface: #161618;
+    --surface2: #1e1e21;
+    --border: #2a2a2e;
+    --accent: #c8f060;
+    --accent-dim: rgba(200,240,96,0.12);
+    --text: #e8e8e4;
+    --muted: #6b6b72;
+    --muted2: #3a3a40;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-weight: 300;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+  }
+
+  /* subtle grid texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: linear-gradient(var(--muted2) 1px, transparent 1px),
+                      linear-gradient(90deg, var(--muted2) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.15;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 640px;
+  }
+
+  header {
+    margin-bottom: 40px;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  header h1 {
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+    font-size: 13px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  header span {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+
+  /* Setup panel */
+  .setup-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 32px;
+    margin-bottom: 24px;
+  }
+
+  .setup-panel h2 {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 24px;
+  }
+
+  .field {
+    margin-bottom: 16px;
+  }
+
+  .field label {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .field input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .field input:focus {
+    border-color: var(--accent);
+  }
+
+  .field input::placeholder { color: var(--muted2); }
+
+  .field-hint {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+
+  .field-hint a { color: var(--accent); text-decoration: none; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--accent);
+    color: #0e0e0f;
+    border: none;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 11px 20px;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.98); }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+
+  .btn-ghost:hover { color: var(--text); border-color: var(--muted); opacity: 1; }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+
+  /* Status bar */
+  .status {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    padding: 10px 0;
+    border-top: 1px solid var(--border);
+    margin-top: 16px;
+  }
+
+  .status.error { color: #ff6b6b; }
+  .status.ok { color: var(--accent); }
+
+  /* Now playing */
+  .now-playing {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 28px 32px;
+    margin-bottom: 2px;
+    display: none;
+  }
+
+  .now-playing.visible { display: block; }
+
+  .track-info {
+    margin-bottom: 20px;
+  }
+
+  .track-label {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .track-name {
+    font-size: 18px;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .track-index {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* Progress */
+  .progress-wrap {
+    margin-bottom: 16px;
+  }
+
+  .progress-bar {
+    width: 100%;
+    height: 2px;
+    background: var(--muted2);
+    cursor: pointer;
+    position: relative;
+    margin-bottom: 8px;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    width: 0%;
+    transition: width 0.25s linear;
+    pointer-events: none;
+  }
+
+  .progress-times {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .ctrl-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 8px;
+    font-size: 14px;
+    transition: color 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  .ctrl-btn:hover { color: var(--text); }
+  .ctrl-btn.active { color: var(--accent); }
+
+  .ctrl-btn.play-pause {
+    background: var(--accent);
+    color: #0e0e0f;
+    padding: 10px 14px;
+    margin: 0 6px;
+    font-size: 16px;
+  }
+
+  .ctrl-btn.play-pause:hover { opacity: 0.85; color: #0e0e0f; }
+
+  .spacer { flex: 1; }
+
+  /* Volume */
+  .volume-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .vol-icon { font-size: 12px; color: var(--muted); }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 80px;
+    height: 2px;
+    background: var(--muted2);
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 10px;
+    height: 10px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+
+  /* Playlist */
+  .playlist-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    display: none;
+    max-height: 360px;
+    overflow-y: auto;
+  }
+
+  .playlist-wrap.visible { display: block; }
+
+  .playlist-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    z-index: 2;
+  }
+
+  .playlist-header span {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .playlist-item {
+    padding: 11px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    transition: background 0.12s;
+    font-size: 12px;
+    letter-spacing: 0.02em;
+  }
+
+  .playlist-item:last-child { border-bottom: none; }
+  .playlist-item:hover { background: var(--surface2); }
+
+  .playlist-item.active {
+    background: var(--accent-dim);
+    color: var(--accent);
+  }
+
+  .playlist-item .num {
+    font-size: 10px;
+    color: var(--muted);
+    width: 20px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .playlist-item.active .num { color: var(--accent); }
+
+  .playlist-item .name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .playlist-item .dur {
+    font-size: 10px;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--surface); }
+  ::-webkit-scrollbar-thumb { background: var(--muted2); }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .now-playing.visible, .playlist-wrap.visible {
+    animation: fadeIn 0.25s ease;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Drive Player</h1>
+    <span>// mp3 streaming from google drive</span>
+  </header>
+
+  <div class="setup-panel" id="setupPanel">
+    <h2>Configuration</h2>
+
+    <div class="field">
+      <label>Google API Key</label>
+      <input type="password" id="apiKey" placeholder="AIza..." autocomplete="off">
+      <div class="field-hint">
+        Create one at <a href="https://console.cloud.google.com/" target="_blank">console.cloud.google.com</a> →
+        APIs & Services → Credentials → API Key.<br>
+        Enable the <strong>Google Drive API</strong> for your project. Your folder must be <strong>publicly shared</strong> (Anyone with the link → Viewer).
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Drive Folder ID</label>
+      <input type="text" id="folderId" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms">
+      <div class="field-hint">
+        From the folder URL: drive.google.com/drive/folders/<strong style="color:var(--text)">THIS_PART</strong>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" onclick="loadFolder()">▶ Load Folder</button>
+      <button class="btn btn-ghost" onclick="togglePlaylist()">Queue</button>
+    </div>
+
+    <div class="status" id="status">— enter credentials above to begin —</div>
+  </div>
+
+  <!-- Now Playing -->
+  <div class="now-playing" id="nowPlaying">
+    <div class="track-info">
+      <div class="track-label">Now Playing</div>
+      <div class="track-name" id="trackName">—</div>
+      <div class="track-index" id="trackIndex"></div>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-bar" id="progressBar" onclick="seekTo(event)">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div class="progress-times">
+        <span id="timeCurrent">0:00</span>
+        <span id="timeDuration">0:00</span>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="ctrl-btn" id="shuffleBtn" onclick="toggleShuffle()" title="Shuffle">⇄</button>
+      <button class="ctrl-btn" onclick="prevTrack()" title="Previous">⏮</button>
+      <button class="ctrl-btn play-pause" id="playPauseBtn" onclick="togglePlay()">▶</button>
+      <button class="ctrl-btn" onclick="nextTrack()" title="Next">⏭</button>
+      <button class="ctrl-btn" id="repeatBtn" onclick="toggleRepeat()" title="Repeat">↺</button>
+      <div class="spacer"></div>
+      <div class="volume-wrap">
+        <span class="vol-icon">♪</span>
+        <input type="range" id="volSlider" min="0" max="1" step="0.02" value="1" oninput="setVolume(this.value)">
+      </div>
+    </div>
+  </div>
+
+  <!-- Playlist -->
+  <div class="playlist-wrap" id="playlistWrap">
+    <div class="playlist-header">
+      <span id="playlistCount">0 tracks</span>
+      <button class="btn btn-ghost" style="font-size:10px;padding:5px 10px;" onclick="shuffleAll()">Shuffle All</button>
+    </div>
+    <div id="playlistItems"></div>
+  </div>
+</div>
+
+<audio id="audio"></audio>
+
+<script>
+const audio = document.getElementById('audio');
+let tracks = [];
+let shuffledOrder = [];
+let currentIndex = 0;
+let isShuffled = false;
+let repeatMode = 0; // 0=off, 1=all, 2=one
+let isLoaded = false;
+
+function setStatus(msg, type = '') {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status ' + type;
+}
+
+async function loadFolder() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const folderId = document.getElementById('folderId').value.trim();
+
+  if (!apiKey || !folderId) {
+    setStatus('⚠ Please enter both API key and folder ID.', 'error');
+    return;
+  }
+
+  setStatus('Loading folder…');
+
+  let allFiles = [];
+  let pageToken = '';
+
+  try {
+    do {
+      const url = new URL('https://www.googleapis.com/drive/v3/files');
+      url.searchParams.set('q', `'${folderId}' in parents and mimeType='audio/mpeg' and trashed=false`);
+      url.searchParams.set('fields', 'nextPageToken,files(id,name,size)');
+      url.searchParams.set('orderBy', 'name');
+      url.searchParams.set('pageSize', '1000');
+      url.searchParams.set('key', apiKey);
+      if (pageToken) url.searchParams.set('pageToken', pageToken);
+
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (data.error) {
+        setStatus(`⚠ API error: ${data.error.message}`, 'error');
+        return;
+      }
+
+      allFiles = allFiles.concat(data.files || []);
+      pageToken = data.nextPageToken || '';
+    } while (pageToken);
+
+    if (allFiles.length === 0) {
+      setStatus('No MP3 files found. Make sure the folder is public and contains .mp3 files.', 'error');
+      return;
+    }
+
+    tracks = allFiles.map(f => ({
+      id: f.id,
+      name: f.name.replace(/\.mp3$/i, ''),
+      url: `https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&key=${apiKey}`
+    }));
+
+    isLoaded = true;
+    buildPlaylist();
+    setStatus(`✓ ${tracks.length} track${tracks.length !== 1 ? 's' : ''} loaded`, 'ok');
+
+    // Show player UI
+    document.getElementById('nowPlaying').classList.add('visible');
+    document.getElementById('playlistWrap').classList.add('visible');
+
+    // Start with first track (or shuffle)
+    shuffledOrder = [...Array(tracks.length).keys()];
+    if (isShuffled) shuffleArray(shuffledOrder);
+    loadTrack(0, false);
+
+  } catch (e) {
+    setStatus(`⚠ Failed to load: ${e.message}`, 'error');
+  }
+}
+
+function buildPlaylist() {
+  const container = document.getElementById('playlistItems');
+  container.innerHTML = '';
+  document.getElementById('playlistCount').textContent = `${tracks.length} track${tracks.length !== 1 ? 's' : ''}`;
+
+  tracks.forEach((t, i) => {
+    const div = document.createElement('div');
+    div.className = 'playlist-item';
+    div.dataset.index = i;
+    div.innerHTML = `
+      <span class="num">${String(i + 1).padStart(2, '0')}</span>
+      <span class="name">${escHtml(t.name)}</span>
+      <span class="dur" id="dur-${i}">—</span>
+    `;
+    div.addEventListener('click', () => {
+      const pos = isShuffled ? shuffledOrder.indexOf(i) : i;
+      currentIndex = pos;
+      loadTrack(currentIndex, true);
+    });
+    container.appendChild(div);
+  });
+}
+
+function loadTrack(pos, autoplay = true) {
+  currentIndex = pos;
+  const realIndex = isShuffled ? shuffledOrder[pos] : pos;
+  const track = tracks[realIndex];
+
+  document.getElementById('trackName').textContent = track.name;
+  document.getElementById('trackIndex').textContent =
+    `${pos + 1} / ${tracks.length}${isShuffled ? ' (shuffled)' : ''}`;
+
+  audio.src = track.url;
+  audio.load();
+
+  if (autoplay) audio.play().then(updatePlayBtn).catch(e => setStatus(`⚠ Playback error: ${e.message}`, 'error'));
+
+  updatePlaylistHighlight(realIndex);
+}
+
+function updatePlaylistHighlight(realIndex) {
+  document.querySelectorAll('.playlist-item').forEach(el => {
+    el.classList.toggle('active', parseInt(el.dataset.index) === realIndex);
+  });
+  // Scroll into view
+  const active = document.querySelector('.playlist-item.active');
+  if (active) active.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+function updatePlayBtn() {
+  document.getElementById('playPauseBtn').textContent = audio.paused ? '▶' : '⏸';
+}
+
+function togglePlay() {
+  if (!isLoaded) return;
+  if (audio.paused) audio.play().then(updatePlayBtn);
+  else { audio.pause(); updatePlayBtn(); }
+}
+
+function nextTrack() {
+  if (!isLoaded) return;
+  if (currentIndex < tracks.length - 1) loadTrack(currentIndex + 1, true);
+  else if (repeatMode === 1) loadTrack(0, true);
+}
+
+function prevTrack() {
+  if (!isLoaded) return;
+  if (audio.currentTime > 3) { audio.currentTime = 0; return; }
+  if (currentIndex > 0) loadTrack(currentIndex - 1, true);
+}
+
+function toggleShuffle() {
+  isShuffled = !isShuffled;
+  document.getElementById('shuffleBtn').classList.toggle('active', isShuffled);
+
+  if (isShuffled) {
+    const realCurrent = shuffledOrder[currentIndex] ?? currentIndex;
+    shuffleArray(shuffledOrder);
+    // Keep current track first in shuffled order
+    const ci = shuffledOrder.indexOf(realCurrent);
+    [shuffledOrder[0], shuffledOrder[ci]] = [shuffledOrder[ci], shuffledOrder[0]];
+    currentIndex = 0;
+  } else {
+    const realCurrent = shuffledOrder[currentIndex] ?? currentIndex;
+    shuffledOrder = [...Array(tracks.length).keys()];
+    currentIndex = realCurrent;
+  }
+
+  const realIndex = isShuffled ? shuffledOrder[currentIndex] : currentIndex;
+  document.getElementById('trackIndex').textContent =
+    `${currentIndex + 1} / ${tracks.length}${isShuffled ? ' (shuffled)' : ''}`;
+  updatePlaylistHighlight(realIndex);
+}
+
+function shuffleAll() {
+  if (!isLoaded) return;
+  isShuffled = true;
+  document.getElementById('shuffleBtn').classList.add('active');
+  shuffledOrder = [...Array(tracks.length).keys()];
+  shuffleArray(shuffledOrder);
+  currentIndex = 0;
+  loadTrack(0, true);
+}
+
+function toggleRepeat() {
+  repeatMode = (repeatMode + 1) % 3;
+  const btn = document.getElementById('repeatBtn');
+  btn.classList.toggle('active', repeatMode > 0);
+  btn.textContent = repeatMode === 2 ? '↺¹' : '↺';
+  btn.title = ['Repeat: Off', 'Repeat: All', 'Repeat: One'][repeatMode];
+}
+
+function seekTo(e) {
+  if (!audio.duration) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  const pct = (e.clientX - rect.left) / rect.width;
+  audio.currentTime = pct * audio.duration;
+}
+
+function setVolume(v) { audio.volume = v; }
+
+function togglePlaylist() {
+  document.getElementById('playlistWrap').classList.toggle('visible');
+}
+
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
+function formatTime(s) {
+  if (!isFinite(s)) return '—';
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${sec.toString().padStart(2, '0')}`;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// Audio events
+audio.addEventListener('play', updatePlayBtn);
+audio.addEventListener('pause', updatePlayBtn);
+
+audio.addEventListener('timeupdate', () => {
+  if (!audio.duration) return;
+  const pct = (audio.currentTime / audio.duration) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('timeCurrent').textContent = formatTime(audio.currentTime);
+});
+
+audio.addEventListener('loadedmetadata', () => {
+  document.getElementById('timeDuration').textContent = formatTime(audio.duration);
+  // Cache duration in playlist
+  const realIndex = isShuffled ? shuffledOrder[currentIndex] : currentIndex;
+  const durEl = document.getElementById(`dur-${realIndex}`);
+  if (durEl) durEl.textContent = formatTime(audio.duration);
+});
+
+audio.addEventListener('ended', () => {
+  if (repeatMode === 2) { audio.play(); return; }
+  if (currentIndex < tracks.length - 1) loadTrack(currentIndex + 1, true);
+  else if (repeatMode === 1) loadTrack(0, true);
+  else updatePlayBtn();
+});
+
+audio.addEventListener('error', () => {
+  setStatus('⚠ Could not stream this file. Ensure the folder is publicly shared.', 'error');
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+  if (e.code === 'ArrowRight') nextTrack();
+  if (e.code === 'ArrowLeft') prevTrack();
+});
+</script>
+</body>
+</html>
